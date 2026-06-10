@@ -43,8 +43,8 @@ BLOCK_SIZE = 64
 N_HEAD     = 4
 HEAD_DIM   = N_EMBD // N_HEAD   # 64
 
-TOTAL_STEPS     = 75000
-STEPS_PER_CHUNK = 1        # change to 2-10 for slow Android, does NOT affect quality
+TOTAL_STEPS     = 75_000
+STEPS_PER_CHUNK = 75_000        # change to 2-10 for slow Android, does NOT affect quality
 LR_BASE         = 1.5e-3        # tuned for 256-dim @ 75k
 LR_WARMUP       = 800
 LR_FLOOR        = 0.025         # 2.5% of LR_BASE minimum

@@ -3,7 +3,7 @@ dataset.py  -  MicroBot v6  live dataset builder
 =================================================
 Fetches real knowledge from Wikipedia REST API.
   - 100+ topics covering science, daily life, culture, nature, tech
-  - Multiple Q-A phrasings per topic (10+ per article)
+  - More Q-A phrasings per topic (10+ per article)
   - Answer-side synonym pairs for better retrieval
   - Smarter word-fact extraction
   - Always merges SEED_PAIRS so bot answers basics even offline
@@ -18,35 +18,46 @@ import os, json, re, time, urllib.request, urllib.parse, zlib
 DATASET_FILE  = "dataset.json"
 DATASET_CACHE = "dataset_cache.json"
 
+# 100+ topics - science, tech, nature, daily life, culture, math, history
 TOPICS = [
+    # AI / Computing
     "artificial intelligence", "machine learning", "neural network",
     "deep learning", "natural language processing", "transformer model",
     "computer science", "algorithm", "data structure", "operating system",
     "programming language", "software engineering", "internet", "world wide web",
     "computer vision", "robotics", "cybersecurity",
+    # Brain / Mind
     "human brain", "neuroscience", "consciousness", "memory",
     "psychology", "emotion", "cognition", "perception", "motivation",
     "sleep", "dream", "mental health", "intelligence",
+    # Physics
     "physics", "quantum mechanics", "gravity", "black hole", "relativity",
     "thermodynamics", "electricity", "magnetism", "light", "sound",
     "nuclear physics", "particle physics", "wave", "optics",
+    # Chemistry / Biology
     "chemistry", "atom", "molecule", "chemical bond", "periodic table",
     "biology", "cell biology", "DNA", "evolution", "photosynthesis",
     "genetics", "protein", "enzyme", "virus", "bacteria",
+    # Earth / Space / Nature
     "solar system", "planet", "star", "galaxy", "universe",
     "earth", "ocean", "atmosphere", "climate change", "ecology",
     "weather", "volcano", "earthquake", "water cycle", "forest",
     "mountain", "river", "desert", "coral reef",
+    # Math
     "mathematics", "calculus", "statistics", "probability", "geometry",
     "algebra", "number theory", "logic",
+    # History / Philosophy / Culture
     "history of science", "scientific method", "hypothesis", "experiment",
     "philosophy", "ethics", "knowledge", "reality",
     "language", "linguistics", "grammar", "semantics", "communication",
+    # Society / Economy
     "economics", "supply and demand", "inflation", "trade", "democracy",
     "human rights", "education", "medicine", "nutrition",
+    # Daily life / Nature
     "color", "time", "calendar", "music", "art", "sport",
     "food", "cooking", "agriculture", "animal", "plant",
     "friendship", "family", "love", "happiness", "creativity",
+    # Engineering / Energy
     "energy", "electricity generation", "solar energy", "nuclear energy",
     "engineering", "materials science", "nanotechnology",
 ]
@@ -88,6 +99,7 @@ def _keywords(text):
     words = re.findall(r"[a-z]+", text.lower())
     return [w for w in words if w not in STOPWORDS and len(w) > 2]
 
+# Question templates - more varied = better retrieval
 _Q_TEMPLATES = [
     "what is {t}",
     "explain {t}",
@@ -112,13 +124,16 @@ def _build_pairs_from_text(title, text):
     s1 = sents[1].lower().rstrip(".") if len(sents) > 1 else ""
     s2 = sents[2].lower().rstrip(".") if len(sents) > 2 else ""
 
-    core      = s0
+    # Core answer = first sentence
+    core = s0
     long_core = f"{s0}. {s1}".strip(" .") if s1 else s0
 
+    # All template variations pointing to the same core answer
     for tmpl in _Q_TEMPLATES:
         q = tmpl.format(t=tl)
         pairs.append(f"{q} => {core}")
 
+    # Second sentence pairs - different aspects
     if s1:
         pairs.append(f"what does {tl} involve => {s1}")
         pairs.append(f"how is {tl} used => {s1}")
@@ -127,15 +142,18 @@ def _build_pairs_from_text(title, text):
         pairs.append(f"what is an example of {tl} => {s2}")
         pairs.append(f"why is {tl} important => {s2}")
 
+    # Longer combined answer
     if s1:
         pairs.append(f"give a detailed explanation of {tl} => {long_core}")
 
+    # Keyword-based pair
     kws = _keywords(text)
     unique_kws = list(dict.fromkeys(kws))[:5]
     if unique_kws:
         pairs.append(f"key concepts in {tl} => {', '.join(unique_kws[:4])}")
         pairs.append(f"what are the main ideas of {tl} => {', '.join(unique_kws[:4])}")
 
+    # Paraphrase pairs using different question forms
     words_in_title = re.findall(r"[a-z]+", tl)
     if len(words_in_title) >= 2:
         last_word = words_in_title[-1]
@@ -156,7 +174,10 @@ def _word_facts_from_text(title, text):
                 facts.append((kw, sl.rstrip(".")))
     return facts
 
+# ── SEED PAIRS ─────────────────────────────────────────────────────────────────
+# Always present even offline. Covers greetings + 80+ facts.
 SEED_PAIRS = [
+    # Greetings / meta
     "hello => hi there! how can i help you today",
     "hi => hello! great to hear from you. ask me anything",
     "hey => hey! what would you like to know?",
@@ -175,6 +196,7 @@ SEED_PAIRS = [
     "thank you => happy to help! ask me anything else",
     "tell me a joke => why did the neural network fail the exam? it had too many hidden layers but not enough understanding",
     "what is your purpose => to understand your questions word by word and give you clear answers from real knowledge",
+    # Daily / common
     "what is colour => colour is the visual property of objects determined by the wavelengths of light they reflect or emit",
     "what is color => color is the visual perception caused by different wavelengths of light hitting the eye, creating sensations like red, blue, and green",
     "what color is grass => grass is green because it contains chlorophyll, a pigment that absorbs red and blue light and reflects green",
@@ -196,6 +218,7 @@ SEED_PAIRS = [
     "what is the sun => the sun is a star at the center of our solar system; a giant ball of plasma powered by nuclear fusion of hydrogen into helium",
     "what is rain => rain is liquid water falling from clouds, formed when water vapor in the atmosphere condenses around tiny particles",
     "what is wind => wind is the movement of air caused by differences in atmospheric pressure; air flows from high pressure to low pressure areas",
+    # Science
     "what is artificial intelligence => artificial intelligence is the ability of machines to simulate human reasoning, learning, perception, and problem solving",
     "what is machine learning => machine learning is a branch of ai where systems learn patterns from data to make predictions or decisions without explicit programming",
     "what is a neural network => a neural network is a computing system loosely inspired by biological neurons, organized in layers that learn to transform inputs into outputs",
@@ -265,7 +288,8 @@ def build_dataset(force=False):
     word_facts  = {}
     topic_index = {}
 
-    for topic in TOPICS:
+    total = len(TOPICS)
+    for i, topic in enumerate(TOPICS):
         if topic in cache and not force:
             title, text = cache[topic]
         else:
@@ -282,7 +306,8 @@ def build_dataset(force=False):
         pairs = _build_pairs_from_text(title, text)
         all_pairs.extend(pairs)
 
-        for word, meaning in _word_facts_from_text(title, text):
+        facts = _word_facts_from_text(title, text)
+        for word, meaning in facts:
             if word not in word_facts:
                 word_facts[word] = meaning
 
@@ -336,9 +361,10 @@ def load_dataset():
             base = None
 
     if base is None:
-        print("First run: fetching data from Wikipedia (this takes ~30s)...")
+        print("First run: fetching data from Wikipedia...")
         base = build_dataset()
 
+    # Always merge seeds so basics work even if cached dataset predates them
     existing = set(base.get("pairs", []))
     added    = [p for p in SEED_PAIRS if p not in existing]
     if added:
